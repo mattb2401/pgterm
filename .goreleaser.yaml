@@ -39,14 +39,11 @@ archives:
         formats: [zip]
 brews:
   - name: pgterm
-    tap:
-      owner: mattb2401
-      name: homebrew-pgterm
+    repository:
+        owner: mattb2401
+        name: homebrew-pgterm
     homepage: "https://github.com/mattb2401/pgterm"
     description: "PostgreSQL CLI like MySQL"
-    github:
-      owner: mattb2401
-      name: pgterm
     install: |
       bin.install "pgterm"
     test: |
