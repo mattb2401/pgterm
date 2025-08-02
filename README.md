@@ -30,10 +30,15 @@ go install github.com/mattb2401/pgterm@latest
 ---
 
 ## 🔧 Usage
-
+By default: host is localhost and port is 5432
+-p flag is used if your database requires a password for authentication
 ```bash
-# Start interactive REPL
-pgterm connect -h localhost -p 5432 -u myuser -d mydb -p 
+# Start interactive REPL for remote connections
+pgterm connect -h x.x.x.x -p 543200 -u myuser -d mydb -p 
+```
+```bash
+# Start interactive REPL for local connections
+pgterm connect -u myuser -d mydb -p 
 ```
 
 ### Supported Commands
