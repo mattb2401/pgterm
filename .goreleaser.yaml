@@ -37,6 +37,20 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+brews:
+  - name: pgterm
+    tap:
+      owner: mattb2401
+      name: homebrew-pgterm
+    homepage: "https://github.com/mattb2401/pgterm"
+    description: "PostgreSQL CLI like MySQL"
+    github:
+      owner: mattb2401
+      name: pgterm
+    install: |
+      bin.install "pgterm"
+    test: |
+      system "#{bin}/pgterm", "--help"
 
 changelog:
   sort: asc
