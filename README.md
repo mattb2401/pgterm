@@ -103,13 +103,3 @@ Contributions are welcome! Feel free to:
 Licensed under the [MIT License](LICENSE)
 © 2025 Matt Sebuuma
 
----
-
-Let me know if you'd like:
-
-* Project-specific screenshots or command examples
-* Installation instructions using Docker, CLI packaging, or migration tooling
-* Enhanced markdown styles, auto-formatting, or contributors list
-
-Happy to refine further!
-
