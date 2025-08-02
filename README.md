@@ -25,6 +25,13 @@ cd pgterm
 go build -o pgterm
 # or
 go install github.com/mattb2401/pgterm@latest
+
+# brew 
+brew tap mattb2401/pgterm
+brew install pgterm
+
+# To upgrade 
+brew upgrade pgterm
 ````
 
 ---
