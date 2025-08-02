@@ -38,14 +38,14 @@ pgterm connect -h localhost -p 5432 -u myuser -d mydb -p
 
 ### Supported Commands
 
-| MySQL Style                | PostgreSQL Equivalent                                       |
-| -------------------------- | ----------------------------------------------------------- |
-| `SHOW SCHEMAS;`            | `SELECT schema_name FROM information_schema.schemata;`      |
-| `SHOW TABLES;`             | `SELECT tablename FROM pg_tables WHERE schemaname = '...';` |
-| `SHOW CREATE TABLE <tbl>;` | Derived DDL via SQL on `information_schema`                 |
-| `DESCRIBE <tbl>;`          | Column metadata from `information_schema`                   |
-| `USE SCHEMA <name>;`       | Sets active schema context for future queries               |
-| Other SQL statements       | Passed directly to `pgx` or `database/sql`                  |
+| Commands Style             |
+| -------------------------- 
+| `SHOW SCHEMAS;`            
+| `SHOW TABLES;`             
+| `SHOW CREATE TABLE <tbl>;` 
+| `DESCRIBE <tbl>;`          
+| `USE SCHEMA <name>;`       
+| Other SQL statements       
 
 ---
 
