@@ -52,7 +52,9 @@ pgterm connect -h localhost -p 5432 -u myuser -d mydb -p
 ## 🧪 Examples
 
 ```
-Welcome to pgterm monitor. Commands end with `;` or `\g`.
+Welcome to the PgTerm PostgresSQL CLI client v1.0.0.  Commands end with ;.
+Your PostgreSQL user ID is test
+Server version: PostgreSQL 16.4
 Type 'help;' for help.
 
 > USE SCHEMA audit;
