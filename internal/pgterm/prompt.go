@@ -22,7 +22,7 @@ func (p *Prompt) New() {
 	p.DB.QueryRow("SELECT current_user, current_database(), version()").Scan(&currentUser, &currentDatabase, &version)
 	fmt.Print("\n")
 	fmt.Println(fmt.Sprintf(`
-Welcome to the PgTerm PostgresSQL CLI client v1.0.0.  Commands end with ;.
+Welcome to the PgTerm PostgresSQL CLI client.  Commands end with ;.
 Your PostgreSQL user ID is %s
 Server version: PostgreSQL %s
 
