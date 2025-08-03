@@ -113,7 +113,7 @@ func (e *Executor) Execute(input string) (string, bool, error) {
 			return "", promptResetRequired, err
 		}
 		affected, _ := res.RowsAffected()
-		return fmt.Sprintf("%d rows affected", affected), promptResetRequired, nil
+		return fmt.Sprintf("%d rows affected\n", affected), promptResetRequired, nil
 	}
 }
 
