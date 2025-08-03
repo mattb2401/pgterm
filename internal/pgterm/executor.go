@@ -12,60 +12,72 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
+// Executor is responsible for parsing and executing user input SQL/commands against the database.
 type Executor struct {
-	DB *sql.DB
+	DB *sql.DB // Active database connection
 }
 
+// Execute parses user input, rewrites SQL with schema (if needed), and executes it.
+// It handles both SQL commands and internal pseudo-commands like SHOW, USE, etc.
 func (e *Executor) Execute(input string) (string, bool, error) {
 	tokens := strings.Fields(input)
 	if len(tokens) <= 0 {
 		return "", false, fmt.Errorf("unsupported command")
 	}
+
+	// Interpret the input command to determine its SQL equivalent and metadata.
 	sql, executable, sanitize, promptResetRequired, err := e.intepretCommand(input)
 	if err != nil {
 		return "", promptResetRequired, err
 	}
+
+	// Non-executable commands (e.g., "USE SCHEMA x") may change session state only.
 	if !executable {
-		if err != nil {
-			return "", promptResetRequired, err
-		}
 		return sql, promptResetRequired, err
 	}
+
+	// If sanitization is needed, add schema names to table references.
 	if sanitize {
 		sql, err = e.rewriteSQLWithSchema(sql)
 		if err != nil {
 			return "", promptResetRequired, err
 		}
 	}
+
+	// Execute the SQL query.
 	rows, err := e.DB.Query(sql)
 	if err != nil {
 		return "", promptResetRequired, err
 	}
 	defer rows.Close()
+
+	// Prepare the table writer for rendering output as markdown.
 	columns, _ := rows.Columns()
 	table := tablewriter.NewTable(os.Stdout, tablewriter.WithRenderer(renderer.NewMarkdown(
 		tw.Rendition{
 			Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.On}},
-			Borders: tw.Border{
-				Top:    tw.On,
-				Bottom: tw.On,
-			},
+			Borders:  tw.Border{Top: tw.On, Bottom: tw.On},
 		},
 	)), tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Alignment: tw.CellAlignment{Global: tw.AlignLeft}, // Left-align rows
+			Alignment: tw.CellAlignment{Global: tw.AlignLeft}, // Left-align row data
 		},
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{AutoFormat: tw.On},
 			Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
 		},
 	}))
+
+	// Setup containers for scanning row values.
 	values := make([]interface{}, len(columns))
 	pointers := make([]interface{}, len(columns))
 	for i := range values {
 		pointers[i] = &values[i]
 	}
+
 	table.Header(columns)
+
+	// Read and format each row
 	for rows.Next() {
 		if err := rows.Scan(pointers...); err != nil {
 			return "", promptResetRequired, err
@@ -85,12 +97,16 @@ func (e *Executor) Execute(input string) (string, bool, error) {
 		}
 		table.Append(row)
 	}
+
 	table.Render()
 	return "", promptResetRequired, nil
 }
 
+// intepretCommand parses pseudo-SQL commands like SHOW, USE, DESCRIBE, etc.,
+// and returns the equivalent SQL, execution flags, and session state instructions.
 func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error) {
 	cmdSplit := strings.Split(cmd, " ")
+
 	switch cmdSplit[0] {
 	case "SHOW", "show":
 		var cmdDesc string
@@ -99,9 +115,11 @@ func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error)
 		} else {
 			cmdDesc = cmdSplit[1]
 		}
+
 		if len(cmdDesc) == 0 {
 			return "", false, false, false, fmt.Errorf("missing argument for SHOW")
 		}
+
 		switch cmdDesc {
 		case "SCHEMAS", "schemas":
 			return "SELECT schema_name FROM information_schema.schemata;", true, false, false, nil
@@ -133,6 +151,7 @@ func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error)
         GROUP BY relname;
     `, session.ActiveSchema, table), true, false, false, nil
 		}
+
 	case "DESCRIBE", "DESC", "describe", "desc":
 		cmdDesc := cmdSplit[1][:len(cmdSplit[1])-1]
 		if len(cmdDesc) == 0 {
@@ -142,6 +161,7 @@ func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error)
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns
             WHERE table_schema = '%s' AND table_name = '%s';`, session.GetSchema(), cmdDesc), true, false, false, nil
+
 	case "USE", "use":
 		if len(cmdSplit[1]) == 0 {
 			return "", false, false, false, fmt.Errorf("missing argument for USE")
@@ -158,14 +178,20 @@ func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error)
 			session.SetDatabase(cmdDesc)
 			return fmt.Sprintf(`\c %s`, cmdDesc), true, false, true, nil
 		}
+
 	case "CREATE", "create", "GRANT", "grant", "ALTER", "alter":
-		return cmd, true, false, false, nil
+		return cmd, true, false, false, nil // pass through to database
+
 	default:
+		// Treat unknown input as executable SQL that may need schema rewriting
 		return cmd, true, true, false, nil
 	}
+
 	return "", false, true, false, fmt.Errorf("unsupported command: %s", cmd)
 }
 
+// rewriteSQLWithSchema rewrites a SELECT/INSERT/UPDATE/DELETE query
+// to prefix table names with the current schema if they are unqualified.
 func (e *Executor) rewriteSQLWithSchema(rawSQL string) (string, error) {
 	stmt, err := sqlparser.Parse(rawSQL)
 	if err != nil {
@@ -177,7 +203,6 @@ func (e *Executor) rewriteSQLWithSchema(rawSQL string) (string, error) {
 		for _, expr := range stmt.From {
 			if aliased, ok := expr.(*sqlparser.AliasedTableExpr); ok {
 				if tableName, ok := aliased.Expr.(sqlparser.TableName); ok {
-					// only add schema if it's not already qualified
 					if tableName.Qualifier.String() == "" {
 						tableName.Qualifier = sqlparser.NewTableIdent(session.GetSchema())
 						aliased.Expr = tableName
@@ -185,6 +210,7 @@ func (e *Executor) rewriteSQLWithSchema(rawSQL string) (string, error) {
 				}
 			}
 		}
+
 	case *sqlparser.Delete:
 		if tableName, ok := stmt.TableExprs[0].(*sqlparser.AliasedTableExpr); ok {
 			if tn, ok := tableName.Expr.(sqlparser.TableName); ok {
@@ -194,21 +220,27 @@ func (e *Executor) rewriteSQLWithSchema(rawSQL string) (string, error) {
 				}
 			}
 		}
+
 	case *sqlparser.Insert:
 		tn := stmt.Table
 		if tn.Qualifier.String() == "" {
 			tn.Qualifier = sqlparser.NewTableIdent(session.GetSchema())
 			stmt.Table = tn
 		}
+
 	case *sqlparser.Update:
 		tn := stmt.TableExprs[0].(*sqlparser.AliasedTableExpr).Expr.(sqlparser.TableName)
 		if tn.Qualifier.String() == "" {
 			tn.Qualifier = sqlparser.NewTableIdent(session.GetSchema())
 			stmt.TableExprs[0].(*sqlparser.AliasedTableExpr).Expr = tn
 		}
+
 	default:
-		return rawSQL, nil // fallback for unsupported types
+		// If we don't support this type, return the SQL unchanged.
+		return rawSQL, nil
 	}
+
+	// Render the modified AST back to SQL
 	buf := sqlparser.NewTrackedBuffer(nil)
 	stmt.Format(buf)
 	return buf.String(), nil
