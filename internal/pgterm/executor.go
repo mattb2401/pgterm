@@ -10,7 +10,6 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
 
 // Executor is responsible for parsing and executing user input SQL/commands against the database.
@@ -27,7 +26,7 @@ func (e *Executor) Execute(input string) (string, bool, error) {
 	}
 
 	// Interpret the input command to determine its SQL equivalent and metadata.
-	sql, executable, sanitize, promptResetRequired, err := e.intepretCommand(input)
+	sql, executable, requireSanitization, promptResetRequired, err := e.intepretCommand(input)
 	if err != nil {
 		return "", promptResetRequired, err
 	}
@@ -38,11 +37,12 @@ func (e *Executor) Execute(input string) (string, bool, error) {
 	}
 
 	// If sanitization is needed, add schema names to table references.
-	if sanitize {
-		sql, err = e.rewriteSQLWithSchema(sql)
-		if err != nil {
-			return "", promptResetRequired, err
-		}
+	if requireSanitization {
+		sql = addSchema(sql, session.ActiveSchema)
+	}
+	_, err = confirmIfNoWhere(sql)
+	if err != nil {
+		return "", promptResetRequired, err
 	}
 
 	// Execute the SQL query.
@@ -67,7 +67,7 @@ func (e *Executor) Execute(input string) (string, bool, error) {
 				Alignment: tw.CellAlignment{Global: tw.AlignLeft}, // Left-align row data
 			},
 			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{AutoFormat: tw.On},
+				Formatting: tw.CellFormatting{AutoFormat: tw.Off},
 				Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
 			},
 			Footer: tw.CellConfig{
@@ -217,73 +217,4 @@ func (e *Executor) intepretCommand(cmd string) (string, bool, bool, bool, error)
 		return cmd, true, true, false, nil
 	}
 	return "", false, true, false, fmt.Errorf("unsupported command: %s", cmd)
-}
-
-// rewriteSQLWithSchema rewrites a SELECT/INSERT/UPDATE/DELETE query
-// to prefix table names with the current schema if they are unqualified.
-func (e *Executor) rewriteSQLWithSchema(rawSQL string) (string, error) {
-	// Parse to Protobuf AST
-	tree, err := pg_query.Parse(rawSQL)
-	if err != nil {
-		return "", fmt.Errorf("invalid SQL: %v", err)
-	}
-
-	schema := session.GetSchema()
-	rewritten := false
-
-	// Walk all statements in the parsed tree
-	for _, stmt := range tree.Stmts {
-		node := stmt.Stmt
-
-		switch n := node.Node.(type) {
-
-		case *pg_query.Node_CreateStmt:
-			// Add schema to table name
-			relation := n.CreateStmt.Relation
-			if relation.Schemaname == "" {
-				relation.Schemaname = schema
-				rewritten = true
-			}
-
-		case *pg_query.Node_SelectStmt:
-			for _, fromItem := range n.SelectStmt.FromClause {
-				if r, ok := fromItem.Node.(*pg_query.Node_RangeVar); ok {
-					if r.RangeVar.Schemaname == "" {
-						r.RangeVar.Schemaname = schema
-						rewritten = true
-					}
-				}
-			}
-
-		case *pg_query.Node_InsertStmt:
-			r := n.InsertStmt.Relation
-			if r.Schemaname == "" {
-				r.Schemaname = schema
-				rewritten = true
-			}
-
-		case *pg_query.Node_UpdateStmt:
-			r := n.UpdateStmt.Relation
-			if r.Schemaname == "" {
-				r.Schemaname = schema
-				rewritten = true
-			}
-
-		case *pg_query.Node_DeleteStmt:
-			r := n.DeleteStmt.Relation
-			if r.Schemaname == "" {
-				r.Schemaname = schema
-				rewritten = true
-			}
-		}
-	}
-	if !rewritten {
-		return rawSQL, nil
-	}
-	// Deparse back to SQL
-	modifiedSQL, err := pg_query.Deparse(tree)
-	if err != nil {
-		return "", fmt.Errorf("deparse error: %v", err)
-	}
-	return strings.TrimSpace(modifiedSQL), nil
 }

@@ -55,14 +55,6 @@ func (p *Prompt) completer(in prompt.Document) []prompt.Suggest {
 	if len(buffer) > 0 {
 		return nil
 	}
-	//s := []prompt.Suggest{
-	//	{Text: "use schema <schema name>;", Description: "Selects a specific schema"},
-	//	{Text: "show schemas;", Description: "Show all schemas in this database"},
-	//	{Text: "show tables;", Description: "Show all the tables in the selected schema"},
-	//	{Text: "describe <table name>;", Description: "Show table structure or ddl"},
-	//	{Text: "exit;", Description: "Exit the console and return to obivilion"},
-	//	{Text: "quit;", Description: "Quit the console and hide"},
-	//}
 	s := []prompt.Suggest{}
 	return prompt.FilterHasPrefix(s, in.GetWordBeforeCursor(), true)
 }
@@ -133,4 +125,14 @@ func extractPostgresVersion(input string) string {
 		return match[1] // e.g., "16.3"
 	}
 	return ""
+}
+
+func askConfirmation(keyWord string) bool {
+	fmt.Println("WARNING: Your %s statement has NO WHERE clause.", keyWord)
+	answer := prompt.Input("Are you sure you want to continue? (yes/no): ", func(d prompt.Document) []prompt.Suggest {
+		return []prompt.Suggest{}
+	})
+
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	return answer == "yes" || answer == "y"
 }

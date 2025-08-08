@@ -17,27 +17,16 @@ before:
 
 builds:
   - env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - linux
+      - windows
       - darwin
-    goarch:
-      - amd64
-    ignore:
-      - goos: windows
-        goarch: arm64
-      - goos: darwin
-        goarch: arm64
+
 archives:
   - id: default
     builds: [pgterm]
     format: tar.gz
-
-  - id: windows
-    builds: [pgterm]
-    format: zip
-    format_overrides:
-      - goos: windows
 brews:
   - name: pgterm
     repository:
@@ -49,7 +38,6 @@ brews:
       bin.install "pgterm"
     test: |
       system "#{bin}/pgterm", "--help"
-
 changelog:
   sort: asc
   filters:
