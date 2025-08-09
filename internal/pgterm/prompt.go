@@ -128,7 +128,7 @@ func extractPostgresVersion(input string) string {
 }
 
 func askConfirmation(keyWord string) bool {
-	fmt.Println("WARNING: Your %s statement has NO WHERE clause.", keyWord)
+	fmt.Println(fmt.Sprintf("WARNING: Your %s statement has NO WHERE clause.", keyWord))
 	answer := prompt.Input("Are you sure you want to continue? (yes/no): ", func(d prompt.Document) []prompt.Suggest {
 		return []prompt.Suggest{}
 	})
