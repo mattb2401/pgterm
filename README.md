@@ -94,6 +94,26 @@ Schema changed to audit
 
 ---
 
+## Safety Prompt for UPDATE and DELETE Statements
+
+Starting from this v1.2.5 version, **pgterm** detects `UPDATE` and `DELETE` SQL commands that **do not include a WHERE clause** and 
+prompts you for confirmation before executing them. This safety feature helps prevent accidental data loss by making sure 
+you explicitly approve potentially dangerous commands.
+
+### How it works
+
+When you run an `UPDATE` or `DELETE` without a `WHERE` clause, pgterm will show a warning and ask:
+If you respond with **no** (or anything other than yes/y), the command will be cancelled, and your data remains safe.
+
+### Example session
+
+```sql
+pgterm [postgres.test_schema]> update cars set brand = 'Toyota';
+WARNING: Your UPDATE statement has NO WHERE clause.
+Are you sure you want to continue? (yes/no): no
+Safe choice. Query cancelled
+````
+
 ## 📦 Developer Notes
 
 * Built with Go, Cobra CLI library, and `pgx` or `lib/pq` PostgreSQL driver.
